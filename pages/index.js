@@ -1,78 +1,167 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { useState, useEffect } from 'react';
 
 export default function Home() {
+  // --- STATE ---
+  const [todos, setTodos] = useState([]);
+  const [form, setForm] = useState({ task: '', deadline: '' });
+  const [editingId, setEditingId] = useState(null); // Tracks which ID we are editing
+  
+  const [auth, setAuth] = useState({ username: '', password: '' });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isSignUpMode, setIsSignUpMode] = useState(false);
+
+  // --- INITIAL LOAD ---
+  useEffect(() => { fetchTodos(); }, []);
+
+  const fetchTodos = () => {
+    fetch('/api/todos').then(res => {
+      if (res.ok) {
+        setIsLoggedIn(true);
+        res.json().then(data => {
+            // Format date for display
+            const formatted = data.map(t => ({
+                ...t, 
+                deadline: t.deadline ? t.deadline.split('T')[0] : ''
+            }));
+            setTodos(formatted);
+        });
+      }
+      setLoading(false);
+    });
+  };
+
+  // --- ACTIONS ---
+  const handleAuth = async () => {
+    const endpoint = isSignUpMode ? '/api/auth/signup' : '/api/auth/login';
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(auth),
+    });
+    if (res.ok) {
+      if (isSignUpMode) {
+        alert('Account created! Please log in.');
+        setIsSignUpMode(false);
+      } else {
+        window.location.reload();
+      }
+    } else {
+      alert('Authentication failed');
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.task) return;
+
+    if (editingId) {
+      // UPDATE EXISTING
+      await fetch('/api/todos', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, id: editingId, is_completed: false }),
+      });
+      setEditingId(null);
+    } else {
+      // CREATE NEW
+      await fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+    }
+
+    setForm({ task: '', deadline: '' }); // Clear form
+    fetchTodos(); // Refresh list
+  };
+
+  const handleEdit = (todo) => {
+    setEditingId(todo.id);
+    setForm({ task: todo.task, deadline: todo.deadline || '' });
+  };
+
+  const handleDelete = async (id) => {
+    if(!confirm("Delete this task?")) return;
+    await fetch(`/api/todos?id=${id}`, { method: 'DELETE' });
+    fetchTodos();
+  };
+
+  // --- UI RENDER ---
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading...</div>;
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-black px-4">
+        <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+           <h2 className="text-3xl font-bold text-center mb-6">{isSignUpMode ? 'Create Account' : 'Welcome Back'}</h2>
+           <input className="w-full mb-3 px-4 py-3 border rounded-lg" placeholder="Username" value={auth.username} onChange={e => setAuth({...auth, username: e.target.value})} />
+           <input type="password" className="w-full mb-6 px-4 py-3 border rounded-lg" placeholder="Password" value={auth.password} onChange={e => setAuth({...auth, password: e.target.value})} />
+           <button onClick={handleAuth} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold">{isSignUpMode ? 'Sign Up' : 'Sign In'}</button>
+           <button onClick={() => setIsSignUpMode(!isSignUpMode)} className="w-full mt-4 text-blue-600 text-sm">{isSignUpMode ? 'Switch to Login' : 'Switch to Sign Up'}</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black`}
-    >
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the index.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className="min-h-screen bg-gray-50 py-10 px-4">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">My Tasks</h1>
+
+        {/* INPUT FORM */}
+        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm mb-6 border border-gray-200">
+          <div className="flex flex-col gap-4">
+            <input 
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              value={form.task} 
+              onChange={e => setForm({...form, task: e.target.value})} 
+              placeholder="What needs to be done?" 
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs/pages/getting-started?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <div className="flex gap-3">
+              <input 
+                type="date"
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-600"
+                value={form.deadline} 
+                onChange={e => setForm({...form, deadline: e.target.value})} 
+              />
+              <button type="submit" className={`px-8 py-2 rounded-lg font-bold text-white transition ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                {editingId ? 'Update' : 'Add'}
+              </button>
+              {editingId && (
+                <button type="button" onClick={() => { setEditingId(null); setForm({ task: '', deadline: '' }); }} className="px-4 py-2 bg-gray-200 rounded-lg text-gray-700">
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        </form>
+
+        {/* TASK LIST */}
+        <div className="space-y-3">
+          {todos.map(t => (
+            <div key={t.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between group hover:shadow-md transition">
+              <div>
+                <div className="font-medium text-lg text-gray-800">{t.task}</div>
+                {t.deadline && (
+                  <div className="text-xs text-red-500 font-semibold mt-1">
+                    📅 Due: {t.deadline}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleEdit(t)} className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-md">
+                  Edit
+                </button>
+                <button onClick={() => handleDelete(t.id)} className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-500 text-sm rounded-md">
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

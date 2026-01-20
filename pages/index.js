@@ -1,5 +1,16 @@
 import { useState, useEffect } from 'react';
 
+// Hardcoded quotes to avoid API complexity
+const QUOTES = [
+  "Consistency is the key to success.",
+  "Small steps every day add up to big results.",
+  "Don't watch the clock; do what it does. Keep going.",
+  "The secret of getting ahead is getting started.",
+  "Your future is created by what you do today, not tomorrow.",
+  "Dream big and dare to fail.",
+  "Action is the foundational key to all success."
+];
+
 export default function Home() {
   // --- STATE ---
   const [todos, setTodos] = useState([]);
@@ -9,9 +20,16 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSignUpMode, setIsSignUpMode] = useState(false);
+  
+  // NEW STATE FEATURES
+  const [darkMode, setDarkMode] = useState(true); // Default to Dark Mode
+  const [quote, setQuote] = useState('');
 
   // --- INITIAL LOAD ---
-  useEffect(() => { fetchTodos(); }, []);
+  useEffect(() => { 
+    fetchTodos(); 
+    setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+  }, []);
 
   const fetchTodos = () => {
     fetch('/api/todos').then(res => {
@@ -28,6 +46,10 @@ export default function Home() {
       setLoading(false);
     });
   };
+
+  // --- STATS CALCULATION ---
+  const completedCount = todos.filter(t => t.is_completed).length;
+  const activeCount = todos.length - completedCount;
 
   // --- ACTIONS ---
   const handleAuth = async () => {
@@ -54,10 +76,12 @@ export default function Home() {
     if (!form.task) return;
 
     if (editingId) {
+      // Keep existing completion status when editing text
+      const currentTodo = todos.find(t => t.id === editingId);
       await fetch('/api/todos', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, id: editingId, is_completed: false }),
+        body: JSON.stringify({ ...form, id: editingId, is_completed: currentTodo.is_completed }),
       });
       setEditingId(null);
     } else {
@@ -72,6 +96,26 @@ export default function Home() {
     fetchTodos();
   };
 
+  // NEW: Toggle Task Completion
+  const toggleComplete = async (todo) => {
+    // Optimistic update (update UI immediately for speed)
+    const newStatus = !todo.is_completed;
+    const updatedTodos = todos.map(t => t.id === todo.id ? { ...t, is_completed: newStatus } : t);
+    setTodos(updatedTodos);
+
+    await fetch('/api/todos', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        id: todo.id, 
+        task: todo.task, 
+        deadline: todo.deadline, 
+        is_completed: newStatus 
+      }),
+    });
+    fetchTodos(); // Sync with DB to be safe
+  };
+
   const handleEdit = (todo) => {
     setEditingId(todo.id);
     setForm({ task: todo.task, deadline: todo.deadline || '' });
@@ -83,39 +127,27 @@ export default function Home() {
     fetchTodos();
   };
 
-  const handleLogout = () => {
-    // Simple logout by forcing reload (cookies will persist, but for this demo it resets state)
-    // For real logout, you'd need an API route to clear cookies.
-    window.location.reload();
-  };
-
   // --- UI COMPONENTS ---
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-900 text-blue-400 font-bold animate-pulse">Loading Your Tasks...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-900 text-blue-400 font-bold animate-pulse">Loading...</div>;
 
-  // LOGIN SCREEN
+  // LOGIN SCREEN (Always Dark for aesthetic)
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[conic-gradient(at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-purple-900 to-slate-900 px-4">
         <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20">
-           <div className="text-center mb-8">
-             <h2 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-2">
-               {isSignUpMode ? 'Join Us' : 'Welcome Back'}
-             </h2>
-             <p className="text-gray-300 text-sm">Manage your life efficiently.</p>
-           </div>
-
+           <h2 className="text-4xl font-extrabold text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-6">
+             {isSignUpMode ? 'Join Us' : 'Welcome'}
+           </h2>
            <div className="space-y-4">
-             <input className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition" 
+             <input className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500" 
                     placeholder="Username" value={auth.username} onChange={e => setAuth({...auth, username: e.target.value})} />
-             <input type="password" className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition" 
+             <input type="password" className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500" 
                     placeholder="Password" value={auth.password} onChange={e => setAuth({...auth, password: e.target.value})} />
-             
-             <button onClick={handleAuth} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white py-3 rounded-lg font-bold shadow-lg transform transition hover:scale-[1.02]">
-               {isSignUpMode ? 'Create Account' : 'Access Dashboard'}
+             <button onClick={handleAuth} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-bold transition transform hover:scale-[1.02]">
+               {isSignUpMode ? 'Create Account' : 'Login'}
              </button>
-             
-             <button onClick={() => setIsSignUpMode(!isSignUpMode)} className="w-full text-gray-400 text-sm hover:text-white transition">
-               {isSignUpMode ? 'Already have an account? Sign In' : "New here? Create an account"}
+             <button onClick={() => setIsSignUpMode(!isSignUpMode)} className="w-full text-gray-400 text-sm hover:text-white">
+               {isSignUpMode ? 'Already have an account? Login' : "New? Create an account"}
              </button>
            </div>
         </div>
@@ -123,47 +155,73 @@ export default function Home() {
     );
   }
 
-  // DASHBOARD
+  // MAIN DASHBOARD (Dynamic Theme)
+  const theme = {
+    bg: darkMode ? 'bg-slate-900' : 'bg-gray-100',
+    text: darkMode ? 'text-slate-100' : 'text-gray-800',
+    cardBg: darkMode ? 'bg-slate-800' : 'bg-white',
+    cardBorder: darkMode ? 'border-slate-700' : 'border-gray-200',
+    subText: darkMode ? 'text-slate-400' : 'text-gray-500',
+    inputBg: darkMode ? 'bg-slate-900' : 'bg-gray-50',
+    inputBorder: darkMode ? 'border-slate-700' : 'border-gray-200',
+  };
+
   return (
-    <div className="min-h-screen bg-slate-900 py-10 px-4 font-sans text-slate-100">
-      <div className="max-w-3xl mx-auto">
+    <div className={`min-h-screen ${theme.bg} ${theme.text} py-10 px-4 transition-colors duration-300`}>
+      <div className="max-w-4xl mx-auto">
         
-        {/* Header */}
-        <div className="flex justify-between items-center mb-10">
+        {/* HEADER & TOGGLE */}
+        <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">
+            <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-500">
               Task Master
             </h1>
-            <p className="text-slate-400 mt-1">Focus on what matters most.</p>
+            {/* QUOTE SECTION */}
+            <p className={`mt-2 italic ${theme.subText} text-sm max-w-md`}>
+              "{quote}"
+            </p>
           </div>
-          <div className="text-right">
-             <span className="inline-block px-4 py-1 bg-slate-800 rounded-full text-sm font-mono border border-slate-700 text-blue-300">
-               {todos.length} Active Tasks
-             </span>
+          <button 
+            onClick={() => setDarkMode(!darkMode)}
+            className={`p-3 rounded-full ${theme.cardBg} shadow-lg border ${theme.cardBorder} hover:scale-110 transition`}
+          >
+            {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+          </button>
+        </div>
+
+        {/* STATS CARDS */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className={`${theme.cardBg} p-6 rounded-2xl shadow-sm border ${theme.cardBorder} flex flex-col items-center justify-center`}>
+            <span className="text-4xl font-bold text-blue-500">{activeCount}</span>
+            <span className={`text-sm ${theme.subText} font-medium`}>To Do</span>
+          </div>
+          <div className={`${theme.cardBg} p-6 rounded-2xl shadow-sm border ${theme.cardBorder} flex flex-col items-center justify-center`}>
+            <span className="text-4xl font-bold text-green-500">{completedCount}</span>
+            <span className={`text-sm ${theme.subText} font-medium`}>Completed</span>
           </div>
         </div>
 
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} className="bg-slate-800/50 p-6 rounded-2xl shadow-xl mb-8 border border-slate-700 backdrop-blur-sm">
+        {/* INPUT FORM */}
+        <form onSubmit={handleSubmit} className={`${theme.cardBg} p-6 rounded-2xl shadow-lg mb-8 border ${theme.cardBorder}`}>
           <div className="flex flex-col gap-4">
             <input 
-              className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition text-white placeholder-slate-500"
+              className={`w-full px-4 py-3 ${theme.inputBg} border ${theme.inputBorder} rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition`}
               value={form.task} 
               onChange={e => setForm({...form, task: e.target.value})} 
-              placeholder="What is your next goal?" 
+              placeholder="What needs to be done?" 
             />
             <div className="flex gap-3">
               <input 
                 type="date"
-                className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-slate-300"
+                className={`flex-1 px-4 py-2 ${theme.inputBg} border ${theme.inputBorder} rounded-xl focus:ring-2 focus:ring-blue-500 outline-none ${theme.subText}`}
                 value={form.deadline} 
                 onChange={e => setForm({...form, deadline: e.target.value})} 
               />
-              <button type="submit" className={`px-8 py-3 rounded-xl font-bold text-white shadow-lg transition transform hover:scale-105 ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-500'}`}>
-                {editingId ? 'Update Task' : 'Add Task'}
+              <button type="submit" className={`px-8 py-3 rounded-xl font-bold text-white shadow-md transition transform hover:scale-105 ${editingId ? 'bg-orange-500' : 'bg-blue-600'}`}>
+                {editingId ? 'Update' : 'Add Task'}
               </button>
               {editingId && (
-                <button type="button" onClick={() => { setEditingId(null); setForm({ task: '', deadline: '' }); }} className="px-4 py-2 bg-slate-700 rounded-xl text-slate-300 hover:bg-slate-600">
+                <button type="button" onClick={() => { setEditingId(null); setForm({ task: '', deadline: '' }); }} className="px-4 py-2 bg-gray-500 rounded-xl text-white">
                   Cancel
                 </button>
               )}
@@ -171,40 +229,43 @@ export default function Home() {
           </div>
         </form>
 
-        {/* Task List */}
-        <div className="space-y-4">
-          {todos.length === 0 ? (
-             <div className="text-center py-20 bg-slate-800/30 rounded-3xl border border-dashed border-slate-700">
-               <p className="text-slate-500 text-lg">Your list is empty. Time to relax or start building!</p>
-             </div>
-          ) : (
-            todos.map(t => (
-              <div key={t.id} className="group bg-slate-800 p-5 rounded-2xl shadow-md border border-slate-700 flex items-center justify-between hover:border-purple-500/50 hover:shadow-purple-500/10 hover:shadow-lg transition-all duration-300">
-                <div className="flex items-start gap-4">
-                  <div className={`mt-1.5 h-3 w-3 rounded-full shadow-[0_0_10px] ${t.deadline ? 'bg-orange-400 shadow-orange-400/50' : 'bg-blue-400 shadow-blue-400/50'}`}></div>
-                  <div>
-                    <div className="font-semibold text-lg text-slate-100">{t.task}</div>
-                    {t.deadline && (
-                      <div className="flex items-center gap-1 text-xs text-orange-400 font-medium mt-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Due: {t.deadline}
-                      </div>
-                    )}
+        {/* TASK LIST */}
+        <div className="space-y-3">
+          {todos.map(t => (
+            <div key={t.id} className={`group ${theme.cardBg} p-4 rounded-xl shadow-sm border ${theme.cardBorder} flex items-center justify-between hover:shadow-md transition`}>
+              <div className="flex items-center gap-4">
+                {/* COMPLETION CHECKBOX */}
+                <button 
+                  onClick={() => toggleComplete(t)}
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                    t.is_completed ? 'bg-green-500 border-green-500' : 'border-gray-400 hover:border-blue-500'
+                  }`}
+                >
+                  {t.is_completed && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
+                </button>
+
+                <div className={t.is_completed ? 'opacity-50' : ''}>
+                  <div className={`font-semibold text-lg ${t.is_completed ? 'line-through text-gray-500' : theme.text}`}>
+                    {t.task}
                   </div>
-                </div>
-                
-                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">
-                  <button onClick={() => handleEdit(t)} className="p-2 bg-slate-700 hover:bg-blue-600 text-white rounded-lg transition" title="Edit">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                  </button>
-                  <button onClick={() => handleDelete(t.id)} className="p-2 bg-slate-700 hover:bg-red-500 text-white rounded-lg transition" title="Delete">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                  </button>
+                  {t.deadline && (
+                    <div className="text-xs text-orange-400 font-medium">Due: {t.deadline}</div>
+                  )}
                 </div>
               </div>
-            ))
+              
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => handleEdit(t)} className="p-2 text-blue-500 hover:bg-blue-100/10 rounded-lg">✏️</button>
+                <button onClick={() => handleDelete(t.id)} className="p-2 text-red-500 hover:bg-red-100/10 rounded-lg">🗑️</button>
+              </div>
+            </div>
+          ))}
+          
+          {todos.length === 0 && (
+            <div className={`text-center py-12 ${theme.subText}`}>No tasks yet. Add one above!</div>
           )}
         </div>
+
       </div>
     </div>
   );

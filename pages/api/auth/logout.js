@@ -1,14 +1,11 @@
-// pages/api/auth/logout.js
 import { serialize } from 'cookie';
 
 export default function handler(req, res) {
-  // Clear the cookie by setting it to expire immediately
+  // We overwrite the 'auth' cookie with an empty string and expire it immediately (-1)
   const cookie = serialize('auth', '', {
     httpOnly: true,
-    secure: process.env.NODE_ENV !== 'development',
-    sameSite: 'strict',
-    maxAge: -1, // Expire immediately
-    path: '/'
+    path: '/',
+    maxAge: -1 // This deletes the cookie instantly
   });
 
   res.setHeader('Set-Cookie', cookie);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Head from 'next/head'; // <--- NEW IMPORT
+import Head from 'next/head'; 
 import toast, { Toaster } from 'react-hot-toast';
 
 const QUOTES = [
@@ -42,7 +42,8 @@ export default function Home() {
             setTodos(formatted);
         });
       }
-      setTimeout(() => setLoading(false), 2000); 
+      // Slightly faster load for the sleek feel
+      setTimeout(() => setLoading(false), 1500); 
     });
   };
 
@@ -144,28 +145,55 @@ export default function Home() {
     <Head>
       <title>PulsePlan | Organize your life rhythm</title>
       <meta name="description" content="A simple, powerful to-do list app." />
-      {/* This magic line makes the ⚡ emoji your favicon! */}
       <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
     </Head>
   );
 
-  // --- LOADING SCREEN ---
+  // --- NEW MINIMAL LOADING SCREEN ---
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-neutral-900 text-white overflow-hidden">
       <HeadConfig />
-      <div className="mb-12 text-center">
-        <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-pink-500 tracking-tighter">PulsePlan</h1>
+      
+      {/* Brand Name - Clean & Minimal */}
+      <div className="mb-10 text-center animate-fade-in-up">
+        <h1 className="text-4xl font-bold tracking-widest text-white">
+          PulsePlan<span className="text-blue-500">.</span>
+        </h1>
       </div>
-      <div className="text-8xl animate-heartbeat drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]">❤️</div>
-      <h2 className="mt-8 text-xl font-medium text-slate-400 animate-pulse tracking-widest uppercase text-sm">System Initializing...</h2>
+
+      {/* Thin Animated Progress Bar */}
+      <div className="w-64 h-1 bg-neutral-800 rounded-full overflow-hidden mb-6">
+        <div className="h-full bg-blue-500 animate-loading-bar rounded-full"></div>
+      </div>
+
+      {/* Subtle Text */}
+      <p className="text-neutral-500 text-xs font-medium tracking-widest uppercase animate-pulse">
+        Loading your tasks...
+      </p>
+
+      {/* CSS Animations */}
       <style jsx>{`
-        @keyframes heartbeat { 0% { transform: scale(1); } 15% { transform: scale(1.3); } 30% { transform: scale(1); } 45% { transform: scale(1.15); } 60% { transform: scale(1); } }
-        .animate-heartbeat { animation: heartbeat 1.5s infinite ease-in-out; }
+        @keyframes loading-bar {
+          0% { width: 0%; opacity: 0; }
+          20% { width: 10%; opacity: 1; }
+          50% { width: 60%; }
+          100% { width: 100%; }
+        }
+        .animate-loading-bar {
+          animation: loading-bar 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        @keyframes fade-in-up {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.8s ease-out forwards;
+        }
       `}</style>
     </div>
   );
 
-  // --- LOGIN SCREEN (FIXED LOGO & INPUTS) ---
+  // --- LOGIN SCREEN ---
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[conic-gradient(at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-indigo-950 to-slate-900 px-4">
@@ -173,7 +201,6 @@ export default function Home() {
         <Toaster position="top-center" />
         <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md relative overflow-hidden">
            <div className="text-center mb-8">
-             {/* FIXED LOGO COLOR: Now Dark Blue to show on White Card */}
              <h1 className="text-5xl font-black text-blue-900 mb-2 tracking-tight">PulsePlan<span className="text-blue-500">.</span></h1>
              <p className="text-blue-700/60 text-sm font-medium">Organize your life rhythm.</p>
            </div>

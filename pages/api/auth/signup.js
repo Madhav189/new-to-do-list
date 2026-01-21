@@ -11,14 +11,19 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: 'Username and password required' });
   }
 
-  // 1. Hash the password (security standard)
-  const hash = bcrypt.hashSync(password, 10);
+  // Check if user already exists
+  const [existingUser] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+  if (existingUser.length > 0) {
+    return res.status(409).json({ message: 'User already exists' });
+  }
 
+  // Hash password and save
+  const hash = bcrypt.hashSync(password, 10);
+  
   try {
-    // 2. Insert into database
     await db.query('INSERT INTO users (username, password) VALUES (?, ?)', [username, hash]);
     res.status(201).json({ message: 'User created successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'User already exists' });
+    res.status(500).json({ message: 'Database error', error: error.message });
   }
 }

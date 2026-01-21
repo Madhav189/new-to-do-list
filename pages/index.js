@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head'; 
 import toast, { Toaster } from 'react-hot-toast';
 
-// Import our new Modular Components
+// Modular Components
 import Loading from '../components/Loading';
 import AuthForm from '../components/AuthForm';
 import Stats from '../components/Stats';
@@ -11,7 +11,7 @@ import TaskItem from '../components/TaskItem';
 const QUOTES = ["Consistency is key.", "Small steps matter.", "Keep going.", "Start today."];
 
 export default function Home() {
-  // --- STATE (Logic) ---
+  // --- STATE ---
   const [todos, setTodos] = useState([]);
   const [form, setForm] = useState({ task: '', deadline: '', priority: 'medium' });
   const [editingId, setEditingId] = useState(null);
@@ -51,17 +51,13 @@ export default function Home() {
     } else { toast.error('Failed.'); }
   };
 
+  // Fixed Logout Handler
   const handleLogout = async () => {
     try {
-      const res = await fetch('/api/auth/logout');
-      if (res.ok) {
-        // If successful, force a full page navigation to the home page
-        window.location.href = "/";
-      } else {
-        alert("Logout failed! The API file might be missing.");
-      }
+      await fetch('/api/auth/logout');
+      window.location.href = "/"; // Force hard reload to clear state
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Logout error", error);
     }
   };
 
@@ -129,10 +125,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* MODULAR COMPONENTS IN ACTION */}
         <Stats active={todos.length - todos.filter(t => t.is_completed).length} completed={todos.filter(t => t.is_completed).length} theme={theme} />
 
-        {/* INPUT FORM (Ideally this moves to its own component too!) */}
         <form onSubmit={handleSubmit} className={`${theme.cardBg} p-6 rounded-2xl shadow-lg mb-8 border ${theme.cardBorder}`}>
           <div className="flex flex-col gap-4">
             <input className={`w-full px-5 py-4 ${theme.inputBg} border ${theme.inputBorder} rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none transition text-lg`} value={form.task} onChange={e => setForm({...form, task: e.target.value})} placeholder="What's your next move?" />
@@ -146,7 +140,6 @@ export default function Home() {
           </div>
         </form>
 
-        {/* LIST */}
         <div className="space-y-3 pb-20">
           {todos.map(t => (
             <TaskItem 
@@ -161,7 +154,11 @@ export default function Home() {
           {todos.length === 0 && <div className={`text-center py-16 ${theme.subText} border-2 border-dashed ${theme.cardBorder} rounded-2xl`}>No pulses active.</div>}
         </div>
       </div>
-      <footer className={`text-center py-6 text-sm font-medium ${theme.subText} border-t ${theme.cardBorder} mt-auto`}>⚡ Developed by Madhav Prakash</footer>
+
+      {/* FOOTER UPDATED HERE */}
+      <footer className={`text-center py-6 text-sm font-medium ${theme.subText} border-t ${theme.cardBorder} mt-auto`}>
+        Copyright © 2026 Madhav
+      </footer>
     </div>
   );
 }

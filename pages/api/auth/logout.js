@@ -1,13 +1,14 @@
 import { serialize } from 'cookie';
 
 export default function handler(req, res) {
-  // We overwrite the 'auth' cookie with an empty string and expire it immediately (-1)
-  const cookie = serialize('auth', '', {
-    httpOnly: true,
-    path: '/',
-    maxAge: -1 // This deletes the cookie instantly
-  });
+  /* We set the cookie twice to cover all bases:
+     1. Standard removal
+     2. Removal with httpOnly flag (just in case)
+  */
+  res.setHeader('Set-Cookie', [
+    serialize('auth', '', { maxAge: -1, path: '/', expires: new Date(0) }),
+    serialize('auth', '', { maxAge: -1, path: '/', httpOnly: true, expires: new Date(0) }),
+  ]);
 
-  res.setHeader('Set-Cookie', cookie);
-  res.status(200).json({ message: 'Logged out successfully' });
+  res.status(200).json({ success: true });
 }

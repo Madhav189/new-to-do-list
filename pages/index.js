@@ -51,7 +51,19 @@ export default function Home() {
     } else { toast.error('Failed.'); }
   };
 
-  const handleLogout = async () => { await fetch('/api/auth/logout'); window.location.reload(); };
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth/logout');
+      if (res.ok) {
+        // If successful, force a full page navigation to the home page
+        window.location.href = "/";
+      } else {
+        alert("Logout failed! The API file might be missing.");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
